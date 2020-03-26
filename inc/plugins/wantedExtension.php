@@ -23,7 +23,7 @@ function wantedExtension_install()
     //Task
     $date = new DateTime(date("d.m.Y", strtotime('+1 day')));
     $wantedExtensionTask = array(
-        'title' => 'WantedExtension Cleanup', 
+        'title' => 'WantedExtension Cleanup',
         'description' => 'A task to cleanup old thread in the table wantedExtensions',
         'file' => 'wantedExtension',
         'minute' => 0,
@@ -33,7 +33,8 @@ function wantedExtension_install()
         'weekday' => '*',
         'nextrun' => $date->getTimestamp(),
         'logging' => 1,
-        'locked' => 0);
+        'locked' => 0
+    );
     $db->insert_query('tasks', $wantedExtensionTask);
 
     if ($db->engine == 'mysql' || $db->engine == 'mysqli') {
@@ -87,8 +88,8 @@ function wantedExtension_install()
             'value' => 'style="color:yellow;"', // Default
             'disporder' => 4
         ),
-        'wantedExtension_taken' => array(
-            'title' => 'Style für "Vergeben"-Tag',
+        'wantedExtension_halftaken' => array(
+            'title' => 'Style für "Teilvergeben"-Tag',
             'description' => 'Gib unten das CSS ein, welches den Tag stylen soll',
             'optionscode' => 'text',
             'value' => 'style="color:red;"', // Default
@@ -184,7 +185,7 @@ function wantedExtension_install()
     $insert_array = array(
         'title'        => 'forumdisplay_thread_wantedExtension',
         'template'    => $db->escape_string('<br><b>{$lang->wantedExtension_forumdisplay_thread_kind}:</b> {$kind}<br>
-        <b>{$lang->wantedExtension_forumdisplay_thread_age}:</b> {$age} | <b>{$lang->wantedExtension_forumdisplay_thread_ava}:</b> {$ava}<br>{$team}'),
+        <b>{$lang->wantedExtension_forumdisplay_thread_age}:</b> {$age} | <b>{$lang->wantedExtension_forumdisplay_thread_ava}:</b> {$ava}<br>{$links}{$team}'),
         'sid'        => '-1',
         'version'    => '',
         'dateline'    => TIME_NOW
@@ -282,6 +283,50 @@ function wantedExtension_install()
     );
     $db->insert_query("templates", $insert_array);
 
+    //Template showthread_wantedExtension bauen
+    $insert_array = array(
+        'title'        => 'showthread_wantedExtension',
+        'template'    => $db->escape_string('<tr>
+        <td>
+<table cellpadding="5" cellspacing="5" width="100%">
+<tr>
+<td class="tcat" colspan="2">
+{$lang->wantedExtension_showthread_info}
+</td>
+</tr>
+<tr>
+<td class="trow2" style="width: 20% !important;">
+<strong>{$lang->wantedExtension_kind}</strong>
+</td>
+<td class="trow2">
+{$kind}
+</td>
+</tr>
+	<tr>
+<td class="trow2" style="width: 20% !important;">
+<strong>{$lang->wantedExtension_age}</strong>
+</td>
+<td class="trow2">
+{$age}
+</td>
+</tr>
+	<tr>
+<td class="trow2" style="width: 20% !important;">
+<strong>{$lang->wantedExtension_ava}</strong>
+</td>
+<td class="trow2">
+{$ava}
+</td>
+</tr>
+</table>
+</td>
+</tr>'),
+        'sid'        => '-1',
+        'version'    => '',
+        'dateline'    => TIME_NOW
+    );
+    $db->insert_query("templates", $insert_array);
+
     rebuild_settings();
 }
 
@@ -316,6 +361,7 @@ function wantedExtension_activate()
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('{$gotounread}') . "#i", '{$wantedExtensionPrefix} {$gotounread}');
     find_replace_templatesets("newthread", "#" . preg_quote('{$posticons}') . "#i", '{$posticons} {$wantedExtension}');
     find_replace_templatesets("editpost", "#" . preg_quote('{$posticons}') . "#i", '{$posticons} {$wantedExtension}');
+    find_replace_templatesets("showthread", "#" . preg_quote('<tr><td id="posts_container">') . "#i", '{$wantedExtension}<tr><td id="posts_container">');
 }
 
 function wantedExtension_deactivate()
@@ -326,6 +372,7 @@ function wantedExtension_deactivate()
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('{$wantedExtensionPrefix}') . "#i", '', 0);
     find_replace_templatesets("newthread", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
     find_replace_templatesets("editpost", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
+    find_replace_templatesets("showthread", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
 }
 
 $plugins->add_hook('forumdisplay_thread', 'wantedExtension_forumdisplay_thread');
@@ -333,70 +380,87 @@ function wantedExtension_forumdisplay_thread()
 {
     global $mybb, $templates, $thread, $lang, $db, $wantedExtension, $wantedExtensionPrefix, $thread, $fid;
     $lang->load('wantedExtension');
-    $wantedArea = $mybb->settings['wantedExtension_area'];
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
     $tid = $thread['tid'];
 
-    if (strpos($wantedArea, (string) $fid) !== false) {
-        //normale Infos
-        $informations = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $tid));
-        $kind = $informations['kind'];
-        $age = $informations['age'];
-        $ava = $informations['avatar'];
+    foreach ($areas as $area) {
+        if ($area == $fid) {
+            //normale Infos
+            $informations = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $tid));
+            $kind = $informations['kind'];
+            $age = $informations['age'];
+            $ava = $informations['avatar'];
 
-        if ($informations['status'] == $lang->wantedExtension_free) {
-            $css = $mybb->settings['wantedExtension_free'];
-            $status = $lang->wantedExtension_free;
-        } elseif ($informations['status'] == $lang->wantedExtension_reserved) {
-            $css = $mybb->settings['wantedExtension_reserved'];
-            $status = $lang->wantedExtension_reserved;
-        } else {
-            $css = $mybb->settings['wantedExtension_taken'];
-            $status = $lang->wantedExtension_taken;
+            if ($informations['status'] == $lang->wantedExtension_free) {
+                $css = $mybb->settings['wantedExtension_free'];
+                $status = $lang->wantedExtension_free;
+            } elseif ($informations['status'] == $lang->wantedExtension_reserved) {
+                $css = $mybb->settings['wantedExtension_reserved'];
+                $status = $lang->wantedExtension_reserved;
+            } else {
+                $css = $mybb->settings['wantedExtension_halftaken'];
+                $status = $lang->wantedExtension_halftaken;
+            }
+
+            if ($thread['uid'] == $mybb->user['uid'] || $thread['uid'] == $mybb->user['as_uid']) {
+                eval("\$wantedExtensionPrefix = \"" . $templates->get("forumdisplay_thread_wantedExtension_PrefixOwner") . "\";");
+            } else {
+                eval("\$wantedExtensionPrefix = \"" . $templates->get("forumdisplay_thread_wantedExtension_Prefix") . "\";");
+            }
+
+            //links
+            if (!$informations['link_SG'] == '' && !$informations['link_CSB'] == '') {
+                $links = '<a href="' . $informations['link_SG'] . '" target="_blank">SG</a> | <a href="' . $informations['link_CSB'] . '" target="_blank">CSB</a><br>';
+            } elseif (!$informations['link_SG'] == '') {
+                $links = '<a href="' . $informations['link_SG'] . '" target="_blank">SG</a><br>';
+            } elseif (!$informations['link_CSB'] == '') {
+                $links = '<a href="' . $informations['link_CSB'] . '" target="_blank">CSB</a><br>';
+            } else {
+                $links = '';
+            }
+
+            //teamies
+            if ($mybb->usergroup['canmodcp'] == 1) {
+                $team = '<a href="misc.php?action=team&tid=' . $tid . '" title="Links hinzufügen"><i class="fas fa-plus"></i> SG & CSB</a>';
+            } else {
+                $team = '';
+            }
+
+            eval("\$wantedExtension = \"" . $templates->get("forumdisplay_thread_wantedExtension") . "\";");
         }
-
-        if ($thread['uid'] == $mybb->user['uid'] || $thread['uid'] == $mybb->user['as_uid']) {
-            eval("\$wantedExtensionPrefix = \"" . $templates->get("forumdisplay_thread_wantedExtension_PrefixOwner") . "\";");
-        } else {
-            eval("\$wantedExtensionPrefix = \"" . $templates->get("forumdisplay_thread_wantedExtension_Prefix") . "\";");
-        }
-
-        //links
-        if (!$informations['link_SG'] == '' && !$informations['link_CSB'] == '') {
-            $links = '<a href="' . $informations['link_SG'] . '" target="_blank">SG</a> | <a href="' . $informations['link_CSB'] . '" target="_blank">CSB</a><br>';
-        } elseif (!$informations['link_SG'] == '') {
-            $links = '<a href="' . $informations['link_SG'] . '" target="_blank">SG</a><br>';
-        } elseif (!$informations['link_CSB'] == '') {
-            $links = '<a href="' . $informations['link_CSB'] . '" target="_blank">CSB</a><br>';
-        } else {
-            $links = '';
-        }
-
-        //teamies
-        if ($mybb->usergroup['canmodcp'] == 1) {
-            $team = '<a href="misc.php?action=team&tid=' . $tid . '" title="Links hinzufügen"><i class="fas fa-plus"></i> SG & CSB</a>';
-        } else {
-            $team = '';
-        }
-
-        eval("\$wantedExtension = \"" . $templates->get("forumdisplay_thread_wantedExtension") . "\";");
     }
+}
+
+$plugins->add_hook('showthread_start', 'wantedExtension_showthread_start');
+function wantedExtension_showthread_start()
+{
+    global $db, $lang, $thread, $templates, $wantedExtension;
+    $lang->load('wantedExtension');
+
+    $infos = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = '. $thread['tid']));
+    $kind = $infos['kind'];
+    $age = $infos['age'];
+    $ava = $infos['avatar'];
+    eval("\$wantedExtension = \"" . $templates->get("showthread_wantedExtension") . "\";");
 }
 
 $plugins->add_hook('newthread_start', 'wantedExtension_newthread_start');
 function wantedExtension_newthread_start()
 {
     global $templates, $mybb, $lang, $wantedExtension, $fid;
-    $wantedArea = $mybb->settings['wantedExtension_area'];
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
     $lang->load('wantedExtension');
 
-    if (strpos($wantedArea, (string) $fid) !== false) {
-        $kinds = explode(',', $mybb->settings['wantedExtension_kinds']);
-        $wanted_kind = '';
-        foreach ($kinds as $kind) {
-            $wanted_kind .= '<option value="' . $kind . '">' . $kind . '</option>';
-        }
+    foreach ($areas as $area) {
+        if ($area == $fid) {
+            $kinds = explode(',', $mybb->settings['wantedExtension_kinds']);
+            $wanted_kind = '';
+            foreach ($kinds as $kind) {
+                $wanted_kind .= '<option value="' . $kind . '">' . $kind . '</option>';
+            }
 
-        eval("\$wantedExtension = \"" . $templates->get("newthread_wantedExtension") . "\";");
+            eval("\$wantedExtension = \"" . $templates->get("newthread_wantedExtension") . "\";");
+        }
     }
 }
 
@@ -404,18 +468,20 @@ $plugins->add_hook('newthread_do_newthread_end', 'wantedExtension_do_newthread')
 function wantedExtension_do_newthread()
 {
     global $mybb, $db, $fid, $tid, $lang;
-    $wantedArea = $mybb->settings['wantedExtension_area'];
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
     $lang->load('wantedExtension');
 
-    if (strpos($wantedArea, (string) $fid) !== false) {
-        $insert = array(
-            'tid' => $tid,
-            'kind' => $mybb->input['wanted_kind'],
-            'age' => $db->escape_string($mybb->input['wanted_age']),
-            'avatar' => $db->escape_string($mybb->input['wanted_ava']),
-            'status' => $lang->wantedExtension_free,
-        );
-        $db->insert_query('wantedExtension', $insert);
+    foreach ($areas as $area) {
+        if ($area == $fid) {
+            $insert = array(
+                'tid' => $tid,
+                'kind' => $mybb->input['wanted_kind'],
+                'age' => $db->escape_string($mybb->input['wanted_age']),
+                'avatar' => $db->escape_string($mybb->input['wanted_ava']),
+                'status' => $lang->wantedExtension_free,
+            );
+            $db->insert_query('wantedExtension', $insert);
+        }
     }
 }
 
@@ -423,24 +489,26 @@ $plugins->add_hook('editpost_end', 'wantedExtension_editpost');
 function wantedExtension_editpost()
 {
     global $templates, $mybb, $lang, $wantedExtension, $forum, $db, $tid;
-    $wantedArea = $mybb->settings['wantedExtension_area'];
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
     $lang->load('wantedExtension');
 
-    if (strpos($wantedArea, (string) $forum['fid']) !== false) {
-        $kinds = explode(',', $mybb->settings['wantedExtension_kinds']);
-        $wanted_kind = '';
-        $informations = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $tid));
-        foreach ($kinds as $kind) {
-            if ($informations['kind'] == $kind) {
-                $wanted_kind .= '<option value="' . $kind . '" selected>' . $kind . '</option>';
-            } else {
-                $wanted_kind .= '<option value="' . $kind . '">' . $kind . '</option>';
+    foreach ($areas as $area) {
+        if ($area == $forum['fid']) {
+            $kinds = explode(',', $mybb->settings['wantedExtension_kinds']);
+            $wanted_kind = '';
+            $informations = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $tid));
+            foreach ($kinds as $kind) {
+                if ($informations['kind'] == $kind) {
+                    $wanted_kind .= '<option value="' . $kind . '" selected>' . $kind . '</option>';
+                } else {
+                    $wanted_kind .= '<option value="' . $kind . '">' . $kind . '</option>';
+                }
+                $wanted_age = $informations['age'];
+                $wanted_ava = $informations['avatar'];
             }
-            $wanted_age = $informations['age'];
-            $wanted_ava = $informations['avatar'];
-        }
 
-        eval("\$wantedExtension = \"" . $templates->get("newthread_wantedExtension") . "\";");
+            eval("\$wantedExtension = \"" . $templates->get("newthread_wantedExtension") . "\";");
+        }
     }
 }
 
@@ -448,28 +516,30 @@ $plugins->add_hook('editpost_do_editpost_end', 'wantedExtension_do_editpost');
 function wantedExtension_do_editpost()
 {
     global $mybb, $db, $forum, $tid, $lang;
-    $wantedArea = $mybb->settings['wantedExtension_area'];
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
     $lang->load('wantedExtension');
 
-    if (strpos($wantedArea, (string) $forum['fid']) !== false) {
-        $update = array(
-            'kind' => $mybb->input['wanted_kind'],
-            'age' => $db->escape_string($mybb->input['wanted_age']),
-            'avatar' => $db->escape_string($mybb->input['wanted_ava']),
-        );
+    foreach ($areas as $area) {
+        if ($area == $forum['fid']) {
+            $update = array(
+                'kind' => $mybb->input['wanted_kind'],
+                'age' => $db->escape_string($mybb->input['wanted_age']),
+                'avatar' => $db->escape_string($mybb->input['wanted_ava']),
+            );
 
-        $insert = array(
-            'tid' => $tid,
-            'kind' => $mybb->input['wanted_kind'],
-            'age' => $db->escape_string($mybb->input['wanted_age']),
-            'avatar' => $db->escape_string($mybb->input['wanted_ava']),
-            'status' => $lang->wantedExtension_free,
-        );
+            $insert = array(
+                'tid' => $tid,
+                'kind' => $mybb->input['wanted_kind'],
+                'age' => $db->escape_string($mybb->input['wanted_age']),
+                'avatar' => $db->escape_string($mybb->input['wanted_ava']),
+                'status' => $lang->wantedExtension_free,
+            );
 
-        if ($db->index_exists('wantedExtension', $tid)) {
-            $db->update_query('wantedExtension', $update, 'tid = ' . $tid);
-        } else {
-            $db->insert_query('wantedExtension', $insert);
+            if ($db->index_exists('wantedExtension', $tid)) {
+                $db->update_query('wantedExtension', $update, 'tid = ' . $tid);
+            } else {
+                $db->insert_query('wantedExtension', $insert);
+            }
         }
     }
 }
@@ -496,7 +566,7 @@ function wantedExtension_misc()
         }
 
         $wantedStatus = $db->fetch_array($db->simple_select('wantedExtension', 'status', 'tid = ' . $thread['tid']))['status'];
-        $items = array($lang->wantedExtension_free, $lang->wantedExtension_reserved, $lang->wantedExtension_taken);
+        $items = array($lang->wantedExtension_free, $lang->wantedExtension_reserved, $lang->wantedExtension_halftaken);
         foreach ($items as $item) {
             $checked = '';
             if ($wantedStatus == $item) {
@@ -537,7 +607,7 @@ function wantedExtension_misc()
         $wanted = $db->simple_select('wantedExtension', '*');
 
         while ($want = $db->fetch_array($wanted)) {
-            if ($want['status'] != $lang->wantedExtension_taken) {
+            if ($want['status'] != $lang->wantedExtension_halftaken) {
                 $threadtitle = get_thread($want['tid'])['subject'];
                 $avatar =  $want['avatar'];
                 $age = $want['age'];

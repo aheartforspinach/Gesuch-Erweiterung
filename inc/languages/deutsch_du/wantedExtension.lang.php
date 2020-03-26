@@ -1,7 +1,10 @@
 <?php
 $l['wantedExtension_free'] = 'Frei';
 $l['wantedExtension_reserved'] = 'Reserviert';
-$l['wantedExtension_taken'] = 'Vergeben';
+$l['wantedExtension_halftaken'] = 'Teilvergeben';
+
+//showthrad
+$l['wantedExtension_showthread_info'] = 'Gesuchinformationen';
 
 //Newthread
 $l['wantedExtension_kind'] = 'Art des Gesuches';
