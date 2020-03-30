@@ -535,7 +535,7 @@ function wantedExtension_do_editpost()
                 'status' => $lang->wantedExtension_free,
             );
 
-            if ($db->index_exists('wantedExtension', $tid)) {
+            if ($db->fetch_array($db->simple_select('wantedExtension', 'tid',  'tid = '. $tid))['tid'] != null) {
                 $db->update_query('wantedExtension', $update, 'tid = ' . $tid);
             } else {
                 $db->insert_query('wantedExtension', $insert);
