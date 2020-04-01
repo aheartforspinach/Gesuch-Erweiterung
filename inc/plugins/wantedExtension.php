@@ -247,9 +247,13 @@ function wantedExtension_install()
         {$header}
         <table class="tborder" cellspacing="0" cellpadding="5" border="0">
         <tr>
-        <td class="thead" colspan="3"><strong>{$lang->wantedExtension_misc_title}</strong></td>
+        <td class="thead" colspan="5"><strong>{$lang->wantedExtension_misc_title}</strong></td>
         </tr>
             <tr><td class="tcat">
+                {$lang->wantedExtension_misc_status}</td>
+				<td class="tcat">
+                {$lang->wantedExtension_misc_category}</td>
+				<td class="tcat">
                 {$lang->wantedExtension_misc_avatar}</td>
                 <td class="tcat">
                 {$lang->wantedExtension_misc_age}
@@ -273,10 +277,12 @@ function wantedExtension_install()
     $insert_array = array(
         'title'        => 'misc_wantedExtension_bit',
         'template'    => $db->escape_string('<tr>
-        <td class="trow1" align="center">{$avatar}</td>
-        <td class="trow1" align="center">{$age} Jahre</td>
-        <td class="trow1" align="center">{$link}</td>
-    </tr>'),
+        <td class="trow1" align="center">{$status}</td>
+        <td class="trow1" align="center">{$cat}</td>
+           <td class="trow1" align="center">{$avatar}</td>
+           <td class="trow1" align="center">{$age} Jahre</td>
+           <td class="trow1" align="center">{$link}</td>
+       </tr>'),
         'sid'        => '-1',
         'version'    => '',
         'dateline'    => TIME_NOW
@@ -362,6 +368,7 @@ function wantedExtension_activate()
     find_replace_templatesets("newthread", "#" . preg_quote('{$posticons}') . "#i", '{$posticons} {$wantedExtension}');
     find_replace_templatesets("editpost", "#" . preg_quote('{$posticons}') . "#i", '{$posticons} {$wantedExtension}');
     find_replace_templatesets("showthread", "#" . preg_quote('<tr><td id="posts_container">') . "#i", '{$wantedExtension}<tr><td id="posts_container">');
+    find_replace_templatesets("editpost", "#" . preg_quote('{$thread[\'subject\']}') . "#i", '{$wantedExtensionPrefix} {$thread[\'subject\']}');
 }
 
 function wantedExtension_deactivate()
@@ -373,6 +380,7 @@ function wantedExtension_deactivate()
     find_replace_templatesets("newthread", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
     find_replace_templatesets("editpost", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
     find_replace_templatesets("showthread", "#" . preg_quote('{$wantedExtension}') . "#i", '', 0);
+    find_replace_templatesets("showthread", "#" . preg_quote('{$wantedExtensionPrefix}') . "#i", '', 0);
 }
 
 $plugins->add_hook('forumdisplay_thread', 'wantedExtension_forumdisplay_thread');
@@ -434,13 +442,24 @@ function wantedExtension_forumdisplay_thread()
 $plugins->add_hook('showthread_start', 'wantedExtension_showthread_start');
 function wantedExtension_showthread_start()
 {
-    global $db, $lang, $thread, $templates, $wantedExtension;
+    global $db, $lang, $thread, $templates, $wantedExtension, $wantedExtensionPrefix, $mybb;
     $lang->load('wantedExtension');
 
-    $infos = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = '. $thread['tid']));
+    $infos = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $thread['tid']));
     $kind = $infos['kind'];
     $age = $infos['age'];
     $ava = $infos['avatar'];
+    if ($infos['status'] == $lang->wantedExtension_free) {
+        $css = $mybb->settings['wantedExtension_free'];
+        $status = $lang->wantedExtension_free;
+    } elseif ($infos['status'] == $lang->wantedExtension_reserved) {
+        $css = $mybb->settings['wantedExtension_reserved'];
+        $status = $lang->wantedExtension_reserved;
+    } else {
+        $css = $mybb->settings['wantedExtension_halftaken'];
+        $status = $lang->wantedExtension_halftaken;
+    }
+    $wantedExtensionPrefix = '<span ' . $css . '>[' . $status . ']</span> ';
     eval("\$wantedExtension = \"" . $templates->get("showthread_wantedExtension") . "\";");
 }
 
@@ -535,7 +554,7 @@ function wantedExtension_do_editpost()
                 'status' => $lang->wantedExtension_free,
             );
 
-            if ($db->fetch_array($db->simple_select('wantedExtension', 'tid',  'tid = '. $tid))['tid'] != null) {
+            if ($db->fetch_array($db->simple_select('wantedExtension', 'tid',  'tid = ' . $tid))['tid'] != null) {
                 $db->update_query('wantedExtension', $update, 'tid = ' . $tid);
             } else {
                 $db->insert_query('wantedExtension', $insert);
@@ -607,13 +626,13 @@ function wantedExtension_misc()
         $wanted = $db->simple_select('wantedExtension', '*');
 
         while ($want = $db->fetch_array($wanted)) {
-            if ($want['status'] != $lang->wantedExtension_halftaken) {
-                $threadtitle = get_thread($want['tid'])['subject'];
-                $avatar =  $want['avatar'];
-                $age = $want['age'];
-                $link = '<a href="showthread.php?tid=' . $want['tid'] . '" title="Zum Gesuch">' . $threadtitle . '</a>';
-                eval("\$wantedExtension_bit .= \"" . $templates->get("misc_wantedExtension_bit") . "\";");
-            }
+            $threadtitle = get_thread($want['tid'])['subject'];
+            $status = $want['status'];
+            $cat = $want['kind'];
+            $avatar =  $want['avatar'];
+            $age = $want['age'];
+            $link = '<a href="showthread.php?tid=' . $want['tid'] . '" title="Zum Gesuch">' . $threadtitle . '</a>';
+            eval("\$wantedExtension_bit .= \"" . $templates->get("misc_wantedExtension_bit") . "\";");
         }
 
         eval("\$page = \"" . $templates->get("misc_wantedExtension") . "\";");

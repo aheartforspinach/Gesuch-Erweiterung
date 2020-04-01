@@ -3,7 +3,7 @@ $l['wantedExtension_free'] = 'Frei';
 $l['wantedExtension_reserved'] = 'Reserviert';
 $l['wantedExtension_halftaken'] = 'Teilvergeben';
 
-//showthrad
+//showthread
 $l['wantedExtension_showthread_info'] = 'Gesuchinformationen';
 
 //Newthread
@@ -18,6 +18,8 @@ $l['wantedExtension_forumdisplay_thread_ava'] = 'Avatarperson';
 
 //normal page
 $l['wantedExtension_misc_title'] = 'Gesucheübersicht';
+$l['wantedExtension_misc_status'] = 'Status';
+$l['wantedExtension_misc_category'] = 'Kategorie';
 $l['wantedExtension_misc_avatar'] = 'Avatar';
 $l['wantedExtension_misc_age'] = 'Alter';
 $l['wantedExtension_misc_link'] = 'Link';
