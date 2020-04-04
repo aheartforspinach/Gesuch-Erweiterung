@@ -442,25 +442,30 @@ function wantedExtension_forumdisplay_thread()
 $plugins->add_hook('showthread_start', 'wantedExtension_showthread_start');
 function wantedExtension_showthread_start()
 {
-    global $db, $lang, $thread, $templates, $wantedExtension, $wantedExtensionPrefix, $mybb;
+    global $db, $lang, $thread, $templates, $wantedExtension, $wantedExtensionPrefix, $mybb, $fid, $tid;
     $lang->load('wantedExtension');
+    $areas = explode(',', $mybb->settings['wantedExtension_area']);
 
-    $infos = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $thread['tid']));
-    $kind = $infos['kind'];
-    $age = $infos['age'];
-    $ava = $infos['avatar'];
-    if ($infos['status'] == $lang->wantedExtension_free) {
-        $css = $mybb->settings['wantedExtension_free'];
-        $status = $lang->wantedExtension_free;
-    } elseif ($infos['status'] == $lang->wantedExtension_reserved) {
-        $css = $mybb->settings['wantedExtension_reserved'];
-        $status = $lang->wantedExtension_reserved;
-    } else {
-        $css = $mybb->settings['wantedExtension_halftaken'];
-        $status = $lang->wantedExtension_halftaken;
+    foreach ($areas as $area) {
+        if ($area == $fid) {
+            $infos = $db->fetch_array($db->simple_select('wantedExtension', '*', 'tid = ' . $tid));
+            $kind = $infos['kind'];
+            $age = $infos['age'];
+            $ava = $infos['avatar'];
+            if ($infos['status'] == $lang->wantedExtension_free) {
+                $css = $mybb->settings['wantedExtension_free'];
+                $status = $lang->wantedExtension_free;
+            } elseif ($infos['status'] == $lang->wantedExtension_reserved) {
+                $css = $mybb->settings['wantedExtension_reserved'];
+                $status = $lang->wantedExtension_reserved;
+            } else {
+                $css = $mybb->settings['wantedExtension_halftaken'];
+                $status = $lang->wantedExtension_halftaken;
+            }
+            $wantedExtensionPrefix = '<span ' . $css . '>[' . $status . ']</span> ';
+            eval("\$wantedExtension = \"" . $templates->get("showthread_wantedExtension") . "\";");
+        }
     }
-    $wantedExtensionPrefix = '<span ' . $css . '>[' . $status . ']</span> ';
-    eval("\$wantedExtension = \"" . $templates->get("showthread_wantedExtension") . "\";");
 }
 
 $plugins->add_hook('newthread_start', 'wantedExtension_newthread_start');
