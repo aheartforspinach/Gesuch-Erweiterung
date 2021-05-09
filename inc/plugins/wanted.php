@@ -201,7 +201,7 @@ function wanted_install()
         'title'        => 'wanted_forumdisplay_thread',
         'template'    => $db->escape_string('<b>{$lang->wanted_forumdisplay_thread_kind}:</b> {$kind}<br>
 <b>{$lang->wanted_forumdisplay_thread_age}:</b> {$age} | <b>{$lang->wanted_forumdisplay_thread_ava}:</b>
-{$ava}<br>{$links}{$team}'),
+{$ava}<br>{$links}{$team}<br>'),
         'sid'        => '-2',
         'version'    => '',
         'dateline'    => TIME_NOW
