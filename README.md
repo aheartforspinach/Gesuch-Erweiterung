@@ -49,7 +49,7 @@ __Ansicht Präfix ändern__
 __Ansicht Einstellungsdatum ändern__
 ![wanted_change_date](https://aheartforspinach.de/upload/plugins/wanted_changedate.png)
 
-__Ansicht Präfix ändern__
+__Gesuch exportieren__
 ![wanted_change_export](https://aheartforspinach.de/upload/plugins/wanted_export.png)
 
 __Ansicht in Threadansicht__
