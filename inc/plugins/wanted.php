@@ -449,18 +449,6 @@ function wanted_activate()
     find_replace_templatesets("showthread", "#" . preg_quote('{$thread[\'displayprefix\']}') . "#i", '{$wantedPrefix}{$thread[\'displayprefix\']}');
     find_replace_templatesets("showthread", "#" . preg_quote('<div class="float_right">{$newreply}') . "#i", '<div class="float_right">{$shortfacts_wanted} {$newreply}');
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('{$thread[\'multipage\']}') . "#i", '{$thread[\'multipage\']} {$shortfacts_wanted}');
-
-    // insert all wanted threads in the table
-    $wantedArea = $mybb->settings['wanted_area'];
-    $lang->load('wanted');
-    $query = $db->simple_select(
-        'threads t join ' . TABLE_PREFIX . 'forums f on f.fid = t.fid',
-        'tid',
-        'find_in_set(f.fid, "' . $wantedArea . '") and tid not in (select tid from ' . TABLE_PREFIX . 'wanted)'
-    );
-    while ($row = $db->fetch_array($query)) {
-        $db->insert_query('wanted', array('tid' => $row['tid'], 'status' => $lang->wanted_free));
-    }
 }
 
 function wanted_deactivate()
@@ -782,6 +770,25 @@ function wanted_misc()
 
         eval("\$page = \"" . $templates->get('wanted_export_overview') . "\";");
         output_page($page);
+    }
+}
+
+$plugins->add_hook('admin_config_settings_change_commit', 'wanted_admin_config_settings_change_commit');
+function wanted_admin_config_settings_change_commit() {
+    global $mybb, $db;
+
+    if(!key_exists('wanted_area', $mybb->input['upsetting'])) return;
+
+    $selectedOptions = $mybb->input['select']['wanted_area'];
+
+    // insert all wanted threads in the table
+    $query = $db->simple_select(
+        'threads t join ' . TABLE_PREFIX . 'forums f on f.fid = t.fid',
+        'tid',
+        'find_in_set(f.fid, "' . implode(',', $selectedOptions) . '") and tid not in (select tid from ' . TABLE_PREFIX . 'wanted)'
+    );
+    while ($row = $db->fetch_array($query)) {
+        $db->insert_query('wanted', array('tid' => $row['tid'], 'status' => 'Frei'));
     }
 }
 
