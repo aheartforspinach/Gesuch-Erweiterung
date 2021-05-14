@@ -201,7 +201,7 @@ function wanted_install()
         'title'        => 'wanted_forumdisplay_thread',
         'template'    => $db->escape_string('<b>{$lang->wanted_forumdisplay_thread_kind}:</b> {$kind}<br>
 <b>{$lang->wanted_forumdisplay_thread_age}:</b> {$age} | <b>{$lang->wanted_forumdisplay_thread_ava}:</b>
-{$ava}<br>{$links}{$team}<br>'),
+{$ava}<br>{$links}{$team}'),
         'sid'        => '-2',
         'version'    => '',
         'dateline'    => TIME_NOW
@@ -352,7 +352,7 @@ function wanted_install()
         'dateline'    => TIME_NOW
     );
     $db->insert_query("templates", $insert_array);
-    
+
     $insert_array = array(
         'title'        => 'wanted_export_button',
         'template'    => $db->escape_string('<a href="misc.php?action=wanted_export&tid={$tid}" title="{$lang->wanted_export_button_title}"><i class="fas fa-share"></i></a>'),
@@ -439,7 +439,7 @@ function wanted_uninstall()
 
 function wanted_activate()
 {
-    global $db, $mybb;
+    global $db, $mybb, $lang;
     include MYBB_ROOT . "/inc/adminfunctions_templates.php";
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('<span class="author smalltext">') . "#i", '{$wanted} <span class="author smalltext">');
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('{$gotounread}') . "#i", '{$wantedPrefix} {$gotounread}');
@@ -447,9 +447,20 @@ function wanted_activate()
     find_replace_templatesets("editpost", "#" . preg_quote('{$posticons}') . "#i", '{$posticons} {$wanted}');
     find_replace_templatesets("showthread", "#" . preg_quote('<tr><td id="posts_container">') . "#i", '{$wanted}<tr><td id="posts_container">');
     find_replace_templatesets("showthread", "#" . preg_quote('{$thread[\'displayprefix\']}') . "#i", '{$wantedPrefix}{$thread[\'displayprefix\']}');
-    find_replace_templatesets("editpost", "#" . preg_quote('{$thread[\'subject\']}') . "#i", '{$wantedPrefix} {$thread[\'subject\']}');
     find_replace_templatesets("showthread", "#" . preg_quote('<div class="float_right">{$newreply}') . "#i", '<div class="float_right">{$shortfacts_wanted} {$newreply}');
     find_replace_templatesets("forumdisplay_thread", "#" . preg_quote('{$thread[\'multipage\']}') . "#i", '{$thread[\'multipage\']} {$shortfacts_wanted}');
+
+    // insert all wanted threads in the table
+    $wantedArea = $mybb->settings['wanted_area'];
+    $lang->load('wanted');
+    $query = $db->simple_select(
+        'threads t join ' . TABLE_PREFIX . 'forums f on f.fid = t.fid',
+        'tid',
+        'find_in_set(f.fid, "' . $wantedArea . '") and tid not in (select tid from ' . TABLE_PREFIX . 'wanted)'
+    );
+    while ($row = $db->fetch_array($query)) {
+        $db->insert_query('wanted', array('tid' => $row['tid'], 'status' => $lang->wanted_free));
+    }
 }
 
 function wanted_deactivate()
@@ -733,7 +744,7 @@ function wanted_misc()
 
         $dates = $db->fetch_array($db->simple_select('wanted', 'sg, csb', 'tid = ' . $tid));
         $sg = $dates['sg'];
-        $csb =$dates['csb'];
+        $csb = $dates['csb'];
 
         eval("\$page = \"" . $templates->get("wanted_misc_team") . "\";");
         output_page($page);
@@ -759,15 +770,15 @@ function wanted_misc()
         output_page($page);
     }
 
-    if($mybb->get_input('action') == 'wanted_export') {
-        if($mybb->usergroup['canmodcp'] == 0) error_no_permission();
+    if ($mybb->get_input('action') == 'wanted_export') {
+        if ($mybb->usergroup['canmodcp'] == 0) error_no_permission();
 
-        $wanted = $db->fetch_array($db->simple_select('posts', 'message, tid, pid', 'tid = '. $tid, array('order_by' => 'dateline', 'order_dir' => 'asc', 'limit' => 1)));
-        $linkWanted = $mybb->settings['bburl'] . '/showthread.php?tid='.$wanted['tid'].'&pid='.$wanted['pid'].'#'.$wanted['pid'].'';
+        $wanted = $db->fetch_array($db->simple_select('posts', 'message, tid, pid', 'tid = ' . $tid, array('order_by' => 'dateline', 'order_dir' => 'asc', 'limit' => 1)));
+        $linkWanted = $mybb->settings['bburl'] . '/showthread.php?tid=' . $wanted['tid'] . '&pid=' . $wanted['pid'] . '#' . $wanted['pid'] . '';
         $linkForum = $mybb->settings['bburl'];
         $helper = eval($templates->render('wanted_shortfacts'));
         $shortfacts = substr($helper, 33, -31);
-        $wanted = $shortfacts. PHP_EOL . $wanted['message'];
+        $wanted = $shortfacts . PHP_EOL . $wanted['message'];
 
         eval("\$page = \"" . $templates->get('wanted_export_overview') . "\";");
         output_page($page);
