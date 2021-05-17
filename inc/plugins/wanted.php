@@ -498,7 +498,7 @@ function wanted_forumdisplay_thread()
         $status = $lang->wanted_halftaken;
     }
 
-    if (wanted_isAllowToEdit($thread['uid'])) {
+    if (wanted_isAllowToEdit($thread['uid']) && $mybb->user['uid'] != 0) {
         eval("\$wantedPrefix = \"" . $templates->get("wanted_forumdisplay_thread_prefixOwner") . "\";");
     } else {
         eval("\$wantedPrefix = \"" . $templates->get("wanted_forumdisplay_thread_prefix") . "\";");
@@ -692,6 +692,7 @@ function wanted_misc()
 
     $tid = $mybb->get_input('tid');
     if ($mybb->get_input('action') == 'changePrefix') {
+        if($mybb->user['uid'] == 0) error_no_permission();
         if ($tid == null) $tid = $_POST['tid'];
         $thread = get_thread($tid);
         if (!wanted_isAllowToEdit($thread['uid'])) error_no_permission();
@@ -722,6 +723,7 @@ function wanted_misc()
     // 
     if ($mybb->get_input('action') == 'team') {
         if (!($mybb->usergroup['canmodcp'] == 1)) error_no_permission();
+        if($tid == '') error('Es muss eine gültige tid übergeben werden');
 
         if ($_POST['action'] == 'team') {
             $thread = get_thread($tid);
