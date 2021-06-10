@@ -151,12 +151,10 @@ function wanted_install()
     $insert_array = array(
         'title'        => 'wanted_misc_team',
         'template'    => $db->escape_string('<html>
-
 <head>
     <title>{$mybb->settings[\'bbname\']} - {$lang->wanted_team_title}</title>
     {$headerinclude}
 </head>
-
 <body>
     {$header}
     <form action="misc.php?action=team" method="post">
@@ -239,12 +237,10 @@ function wanted_install()
     <td class="trow1" width="20%"><strong>{$lang->wanted_kind}</strong></td>
     <td class="trow1"><span class="smalltext"><select name="wanted_kind">{$wanted_kind}</select></span></td>
 </tr>
-
 <tr>
     <td class="trow1" width="20%"><strong>{$lang->wanted_age}</strong></td>
     <td class="trow1"><span class="smalltext"><input type="text" class="textbox" name="wanted_age" value="{$wanted_age}" /></span></td>
 </tr>
-
 <tr>
     <td class="trow1" width="20%"><strong>{$lang->wanted_ava}</strong></td>
     <td class="trow1"><span class="smalltext"><input type="text" class="textbox" name="wanted_ava" value="{$wanted_ava}" /></span></td>
@@ -394,7 +390,6 @@ function wanted_install()
 {$footer}
 </body>
 </html>
-
 <script>
 copyTextBtn = document.querySelector(\'#copyTextBtn\');
 copyTextBtn.addEventListener(\'click\', function(event) {
@@ -692,7 +687,7 @@ function wanted_misc()
 
     $tid = $mybb->get_input('tid');
     if ($mybb->get_input('action') == 'changePrefix') {
-        if($mybb->user['uid'] == 0) error_no_permission();
+        if ($mybb->user['uid'] == 0) error_no_permission();
         if ($tid == null) $tid = $_POST['tid'];
         $thread = get_thread($tid);
         if (!wanted_isAllowToEdit($thread['uid'])) error_no_permission();
@@ -723,7 +718,7 @@ function wanted_misc()
     // 
     if ($mybb->get_input('action') == 'team') {
         if (!($mybb->usergroup['canmodcp'] == 1)) error_no_permission();
-        if($tid == '') error('Es muss eine gültige tid übergeben werden');
+        if ($tid == '') error('Es muss eine gültige tid übergeben werden');
 
         if ($_POST['action'] == 'team') {
             $thread = get_thread($tid);
@@ -741,7 +736,7 @@ function wanted_misc()
     }
 
     if ($mybb->get_input('action') == 'wanted') {
-        $wanted = $db->simple_select('wanted', '*');
+        $wanted = $db->simple_select('wanted w join ' . TABLE_PREFIX . 'threads t on w.tid = t.tid', 'w.*', 'find_in_set(fid, "' . $mybb->settings['wanted_area'] . '")');
 
         while ($want = $db->fetch_array($wanted)) {
             $thread = get_thread($want['tid']);
@@ -776,10 +771,11 @@ function wanted_misc()
 }
 
 $plugins->add_hook('admin_config_settings_change_commit', 'wanted_admin_config_settings_change_commit');
-function wanted_admin_config_settings_change_commit() {
+function wanted_admin_config_settings_change_commit()
+{
     global $mybb, $db;
 
-    if(!key_exists('wanted_area', $mybb->input['upsetting'])) return;
+    if (!key_exists('wanted_area', $mybb->input['upsetting'])) return;
 
     $selectedOptions = $mybb->input['select']['wanted_area'];
 
