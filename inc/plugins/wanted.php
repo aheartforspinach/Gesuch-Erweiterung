@@ -6,12 +6,17 @@ if (!defined("IN_MYBB")) {
 
 function wanted_info()
 {
+    global $db;
+    $option = '';
+    if ($db->field_exists('whitelist', 'users'))
+        $option = '<div style="float: right;"><a href="index.php?module=config&action=change&search=wanted">Einstellungen</a></div>';
+
     return array(
         "name"            => "Gesuch-Erweiterung",
-        "description"    => "Fügt verschiedene Funktionen zur Verwaltung von Gesuchen hinzu",
+        "description"    => "Fügt verschiedene Funktionen zur Verwaltung von Gesuchen hinzu". $option,
         "author"        => "aheartforspinach",
         "authorsite"    => "https://github.com/aheartforspinach",
-        "version"        => "1.1",
+        "version"        => "1.2",
         "compatibility" => "18*"
     );
 }
@@ -500,15 +505,20 @@ function wanted_forumdisplay_thread()
     }
 
     // display if thread is posted in SG/CSB
-    if (!$information['sg'] == '' && !$information['csb'] == '') {
-        $links = 'SG seit: ' . $information['sg'] . ' | CSB seit: ' . $information['csb'] . '<br>';
-    } elseif (!$information['sg'] == '') {
-        $links = 'SG seit: ' . $information['sg'] . '<br>';
-    } elseif (!$information['csb'] == '') {
-        $links = 'CSB seit: ' . $information['csb'] . '<br>';
-    } else {
-        $links = '';
+    $fields = [];
+    if (!$information['sg'] == '') {
+        $fields[] = '<a href="'.$information['sg'].'" target="_blank">SG</a>';
     }
+
+    if (!$information['csb'] == '') {
+        $fields[] = '<a href="'.$information['csb'].'" target="_blank">CSB</a>';
+    }
+
+    if (!$information['epic'] == '') {
+        $fields[] = '<a href="'.$information['epic'].'" target="_blank">Epic</a>';
+    }
+
+    $links = implode(' | ', $fields) . '<br>';
 
     //teamies
     if ($mybb->usergroup['canmodcp'] == 1) {
@@ -556,7 +566,7 @@ function wanted_showthread_start()
 $plugins->add_hook('newthread_start', 'wanted_newthread_start');
 function wanted_newthread_start()
 {
-    global $templates, $mybb, $lang, $wanted, $fid, $post_errors;
+    global $templates, $mybb, $lang, $wanted, $fid, $post_errors, $db;
     $areas = explode(',', $mybb->settings['wanted_area']);
     $lang->load('wanted');
 
@@ -565,8 +575,20 @@ function wanted_newthread_start()
 
     $kinds = explode(',', $mybb->settings['wanted_kinds']);
     $stati = array($lang->wanted_free, $lang->wanted_reserved, $lang->wanted_halftaken);
-    $wanted_kind = wanted_buildOptionForSelect($kinds);
-    $wanted_status = wanted_buildOptionForSelect($stati);
+
+    // editing draft
+    $tid = $mybb->get_input('tid', Mybb::INPUT_INT);
+    $wanted_ava = $wanted_age = $kind = $status = '';
+    if ($tid !== null) {
+        $information = $db->fetch_array($db->simple_select('wanted', '*', 'tid = ' . $tid));
+        $wanted_age = $information['age'];
+        $wanted_ava = $information['avatar'];
+        $kind = $information['kind'];
+        $status = $information['status'];
+    }
+    
+    $wanted_kind = wanted_buildOptionForSelect($kinds, $kind);
+    $wanted_status = wanted_buildOptionForSelect($stati, $status);
 
     // previewing new thread?
     if (isset($mybb->input['previewpost']) || $post_errors) {
@@ -592,14 +614,21 @@ function wanted_do_newthread()
     // return when it isnt wanted area
     if (!in_array($fid, $areas)) return;
 
-    $insert = array(
+    $data = array(
         'tid' => $tid,
         'kind' => $mybb->input['wanted_kind'],
         'age' => $db->escape_string($mybb->input['wanted_age']),
         'avatar' => $db->escape_string($mybb->input['wanted_ava']),
         'status' => $db->escape_string($mybb->input['wanted_status'])
     );
-    $db->insert_query('wanted', $insert);
+
+    // check if the thread is a draft -> update row
+    $inDB = $db->fetch_field($db->simple_select('wanted', 'tid', 'tid = '. $tid), 'tid'); 
+    if (!$inDB) {
+        $db->insert_query('wanted', $data);
+    } else {
+        $db->update_query('wanted', $data, 'tid = '. $tid);
+    }
 }
 
 // 
@@ -687,7 +716,7 @@ function wanted_misc()
 
     $tid = $mybb->get_input('tid');
     if ($mybb->get_input('action') == 'changePrefix') {
-        if ($mybb->user['uid'] == 0) error_no_permission();
+        if($mybb->user['uid'] == 0) error_no_permission();
         if ($tid == null) $tid = $_POST['tid'];
         $thread = get_thread($tid);
         if (!wanted_isAllowToEdit($thread['uid'])) error_no_permission();
@@ -718,7 +747,7 @@ function wanted_misc()
     // 
     if ($mybb->get_input('action') == 'team') {
         if (!($mybb->usergroup['canmodcp'] == 1)) error_no_permission();
-        if ($tid == '') error('Es muss eine gültige tid übergeben werden');
+        if($tid == '') error('Es muss eine gültige tid übergeben werden');
 
         if ($_POST['action'] == 'team') {
             $thread = get_thread($tid);
@@ -736,7 +765,7 @@ function wanted_misc()
     }
 
     if ($mybb->get_input('action') == 'wanted') {
-        $wanted = $db->simple_select('wanted w join ' . TABLE_PREFIX . 'threads t on w.tid = t.tid', 'w.*', 'find_in_set(fid, "' . $mybb->settings['wanted_area'] . '")');
+        $wanted = $db->simple_select('wanted w join '.TABLE_PREFIX.'threads t on w.tid = t.tid', 'w.*', 'find_in_set(fid, "'.$mybb->settings['wanted_area'].'")');
 
         while ($want = $db->fetch_array($wanted)) {
             $thread = get_thread($want['tid']);
@@ -771,11 +800,10 @@ function wanted_misc()
 }
 
 $plugins->add_hook('admin_config_settings_change_commit', 'wanted_admin_config_settings_change_commit');
-function wanted_admin_config_settings_change_commit()
-{
+function wanted_admin_config_settings_change_commit() {
     global $mybb, $db;
 
-    if (!key_exists('wanted_area', $mybb->input['upsetting'])) return;
+    if(!key_exists('wanted_area', $mybb->input['upsetting'])) return;
 
     $selectedOptions = $mybb->input['select']['wanted_area'];
 
