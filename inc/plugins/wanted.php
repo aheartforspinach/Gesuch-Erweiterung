@@ -16,7 +16,7 @@ function wanted_info()
         "description"    => "Fügt verschiedene Funktionen zur Verwaltung von Gesuchen hinzu". $option,
         "author"        => "aheartforspinach",
         "authorsite"    => "https://github.com/aheartforspinach",
-        "version"        => "1.2",
+        "version"        => "1.2.1",
         "compatibility" => "18*"
     );
 }
@@ -505,20 +505,15 @@ function wanted_forumdisplay_thread()
     }
 
     // display if thread is posted in SG/CSB
-    $fields = [];
-    if (!$information['sg'] == '') {
-        $fields[] = '<a href="'.$information['sg'].'" target="_blank">SG</a>';
+    if (!$information['sg'] == '' && !$information['csb'] == '') {
+        $links = 'SG seit: ' . $information['sg'] . ' | CSB seit: ' . $information['csb'] . '<br>';
+    } elseif (!$information['sg'] == '') {
+        $links = 'SG seit: ' . $information['sg'] . '<br>';
+    } elseif (!$information['csb'] == '') {
+        $links = 'CSB seit: ' . $information['csb'] . '<br>';
+    } else {
+        $links = '';
     }
-
-    if (!$information['csb'] == '') {
-        $fields[] = '<a href="'.$information['csb'].'" target="_blank">CSB</a>';
-    }
-
-    if (!$information['epic'] == '') {
-        $fields[] = '<a href="'.$information['epic'].'" target="_blank">Epic</a>';
-    }
-
-    $links = implode(' | ', $fields) . '<br>';
 
     //teamies
     if ($mybb->usergroup['canmodcp'] == 1) {
