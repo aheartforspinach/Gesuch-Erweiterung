@@ -8,15 +8,15 @@ function wanted_info()
 {
     global $db;
     $option = '';
-    if ($db->field_exists('whitelist', 'users'))
+    if ($db->table_exists('wanted'))
         $option = '<div style="float: right;"><a href="index.php?module=config&action=change&search=wanted">Einstellungen</a></div>';
 
     return array(
-        "name"            => "Gesuch-Erweiterung",
-        "description"    => "Fügt verschiedene Funktionen zur Verwaltung von Gesuchen hinzu". $option,
-        "author"        => "aheartforspinach",
-        "authorsite"    => "https://github.com/aheartforspinach",
-        "version"        => "1.2.1",
+        "name" => "Gesuch-Erweiterung",
+        "description" => "Fügt verschiedene Funktionen zur Verwaltung von Gesuchen hinzu" . $option,
+        "author" => "aheartforspinach",
+        "authorsite" => "https://github.com/aheartforspinach",
+        "version" => "1.2.1",
         "compatibility" => "18*"
     );
 }
@@ -55,7 +55,7 @@ function wanted_install()
         )" . $db->build_create_table_collation());
     }
 
-    //Einstellungen 
+    // settings 
     $setting_group = array(
         'name' => 'wanted',
         'title' => 'Gesuch-Erweiterung',
@@ -581,7 +581,7 @@ function wanted_newthread_start()
         $kind = $information['kind'];
         $status = $information['status'];
     }
-    
+
     $wanted_kind = wanted_buildOptionForSelect($kinds, $kind);
     $wanted_status = wanted_buildOptionForSelect($stati, $status);
 
@@ -618,11 +618,11 @@ function wanted_do_newthread()
     );
 
     // check if the thread is a draft -> update row
-    $inDB = $db->fetch_field($db->simple_select('wanted', 'tid', 'tid = '. $tid), 'tid'); 
+    $inDB = $db->fetch_field($db->simple_select('wanted', 'tid', 'tid = ' . $tid), 'tid');
     if (!$inDB) {
         $db->insert_query('wanted', $data);
     } else {
-        $db->update_query('wanted', $data, 'tid = '. $tid);
+        $db->update_query('wanted', $data, 'tid = ' . $tid);
     }
 }
 
@@ -711,7 +711,7 @@ function wanted_misc()
 
     $tid = $mybb->get_input('tid');
     if ($mybb->get_input('action') == 'changePrefix') {
-        if($mybb->user['uid'] == 0) error_no_permission();
+        if ($mybb->user['uid'] == 0) error_no_permission();
         if ($tid == null) $tid = $_POST['tid'];
         $thread = get_thread($tid);
         if (!wanted_isAllowToEdit($thread['uid'])) error_no_permission();
@@ -742,7 +742,7 @@ function wanted_misc()
     // 
     if ($mybb->get_input('action') == 'team') {
         if (!($mybb->usergroup['canmodcp'] == 1)) error_no_permission();
-        if($tid == '') error('Es muss eine gültige tid übergeben werden');
+        if ($tid == '') error('Es muss eine gültige tid übergeben werden');
 
         if ($_POST['action'] == 'team') {
             $thread = get_thread($tid);
@@ -760,7 +760,7 @@ function wanted_misc()
     }
 
     if ($mybb->get_input('action') == 'wanted') {
-        $wanted = $db->simple_select('wanted w join '.TABLE_PREFIX.'threads t on w.tid = t.tid', 'w.*', 'find_in_set(fid, "'.$mybb->settings['wanted_area'].'")');
+        $wanted = $db->simple_select('wanted w join ' . TABLE_PREFIX . 'threads t on w.tid = t.tid', 'w.*', 'find_in_set(fid, "' . $mybb->settings['wanted_area'] . '")');
 
         while ($want = $db->fetch_array($wanted)) {
             $thread = get_thread($want['tid']);
@@ -795,10 +795,11 @@ function wanted_misc()
 }
 
 $plugins->add_hook('admin_config_settings_change_commit', 'wanted_admin_config_settings_change_commit');
-function wanted_admin_config_settings_change_commit() {
+function wanted_admin_config_settings_change_commit()
+{
     global $mybb, $db;
 
-    if(!key_exists('wanted_area', $mybb->input['upsetting'])) return;
+    if (!key_exists('wanted_area', $mybb->input['upsetting'])) return;
 
     $selectedOptions = $mybb->input['select']['wanted_area'];
 
@@ -837,7 +838,8 @@ function wanted_buildOptionForSelect($data, $selectedValue = null)
 
 function wanted_setButton()
 {
-    global $mybb, $templates, $thread;
+    global $mybb, $templates, $thread, $lang;
+    $lang->load('wanted');
     $wanted_area = explode(',', $mybb->settings['wanted_area']);
     $tid = $thread['tid'];
 
